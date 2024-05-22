@@ -8,6 +8,36 @@ from tqdm import tqdm
 import timeit
 from hype import MANIFOLDS, MODELS
 
+
+def sum_until_threshold(tensor, threshold):
+    """
+    计算从大到小排序后，累加到和大于指定阈值的元素数量。
+
+    参数:
+    tensor (torch.Tensor): 输入的Tensor.
+    threshold (float): 累加的目标阈值，默认为0.9.
+
+    返回:
+    int: 累加和超过阈值所需的元素个数.
+    """
+    # 确保Tensor是非空的
+    assert tensor.numel() > 0, "输入的Tensor不能为空"
+
+    # 降序排序
+    sorted_tensor, _ = torch.sort(tensor, descending=True)
+
+    # 初始化和为0
+    cumulative_sum = 0.0
+
+    # 累加元素直到和超过阈值
+    for i, value in enumerate(sorted_tensor):
+        cumulative_sum += value
+        if cumulative_sum > threshold:
+            return i + 1  # 加1是因为enumerate是从0开始计数的
+
+    # 如果所有元素加起来都不超过阈值，则返回所有元素的数量
+    return len(sorted_tensor)
+
 np.random.seed(42)
 
 parser = argparse.ArgumentParser()
@@ -60,15 +90,19 @@ for object in tqdm(objects):
 (evals, evecs) = torch.linalg.eig(dists_matrix)
 
 U, S, Vh = torch.svd(dists_matrix)
-estimated_rank = torch.sum(S > 1).item()
+total = torch.sum(S)
+P = S/total
+estimated_rank = sum_until_threshold(P, 0.9)
 
-print(f"应用双曲余弦函数后的张量秩估计为：{estimated_rank}")
+print(f"应用双曲余弦函数前的张量秩估计为：{estimated_rank}")
 
 dists_matrix_cosh = torch.cosh(dists_matrix)
 U, S, Vh = torch.svd(dists_matrix_cosh)
-estimated_rank = torch.sum(S > 1).item()
+total = torch.sum(S)
+P = S/total
+estimated_rank = sum_until_threshold(P, 0.9)
 
 print(f"应用双曲余弦函数后的张量秩估计为：{estimated_rank}")
 
-print(dists_matrix_cosh)
+# print(dists_matrix_cosh)
 
